@@ -192,6 +192,12 @@
   .history-text { font-size: 13px; color: #1a1a2e; flex: 1; }
   body.dark .history-text { color: #e6edf3; }
   .history-meta { display: flex; gap: 14px; font-size: 12px; color: #6b7280; font-weight: 600; }
+  @media (max-width: 768px) {
+    .grid-3, .grid-2, .stat-grid, .conclusion-grid, .tip-grid { grid-template-columns: 1fr; }
+    .budget-row { flex-direction: column; align-items: flex-start; }
+    .nav-links { display: none; }
+    .rate-banner { flex-direction: column; align-items: flex-start; }
+  }
 </style>
 </head>
 <body>
@@ -352,6 +358,7 @@
   const BAD = "Explain everything about Artificial Intelligence in great detail covering all topics including history, machine learning, deep learning, neural networks, NLP, computer vision, robotics, ethics, future of AI, and give examples for each topic in at least 2000 words.";
   const GOOD = "Explain AI basics in 5 key points, keep it concise.";
   let history = [];
+  let currentLiveRate = 83.5; // Default fallback
 
   function estimateTokens(text) {
     const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -367,7 +374,7 @@
   }
 
   function getCost(tokens, model) {
-    const rateINR = model === 'large' ? (0.03 * 83.5) : (0.002 * 83.5);
+    const rateINR = model === 'large' ? (0.03 * currentLiveRate) : (0.002 * currentLiveRate);
     return ((tokens / 1000) * rateINR).toFixed(3);
   }
 
@@ -461,11 +468,30 @@
 
   function toggleDark() {
     document.body.classList.toggle('dark');
-    document.querySelector('.toggle-btn').textContent =
-      document.body.classList.contains('dark') ? '☀️ Light' : '🌙 Dark';
+    const isDark = document.body.classList.contains('dark');
+    localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+    document.querySelector('.toggle-btn').textContent = isDark ? '☀️ Light' : '🌙 Dark';
+  }
+  
+  if (localStorage.getItem('darkMode') === 'enabled') {
+    document.body.classList.add('dark');
+    document.querySelector('.toggle-btn').textContent = '☀️ Light';
+  }
+async function syncLiveRate() {
+    try {
+      const response = await fetch('https://open.er-api.com/v6/latest/USD');
+      const data = await response.json();
+      if (data && data.rates && data.rates.INR) {
+        currentLiveRate = data.rates.INR;
+        updateStats(); // Recalculate with the live rate
+      }
+    } catch (error) {
+      console.log("Using fallback rate");
+    }
   }
 
   updateStats();
+  syncLiveRate();
 </script>
 </body>
 </html>
